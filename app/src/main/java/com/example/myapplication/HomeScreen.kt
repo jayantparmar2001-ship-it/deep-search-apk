@@ -113,7 +113,7 @@ fun HomeScreen(
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                text = "Send us your questions or feedback",
+                                text = "Submit a query or view your existing requests",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
