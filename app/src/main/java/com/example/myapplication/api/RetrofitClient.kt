@@ -43,4 +43,5 @@ object RetrofitClient {
 
     val authApi: AuthApi = retrofit.create(AuthApi::class.java)
     val queryApi: QueryApi = retrofit.create(QueryApi::class.java)
+    val labourApi: LabourApi = retrofit.create(LabourApi::class.java)
 }

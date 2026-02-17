@@ -51,7 +51,9 @@ import kotlinx.coroutines.launch
 @Composable
 fun AuthScreen(
     modifier: Modifier = Modifier,
-    onLoginSuccess: (String?, String?) -> Unit = { name, email -> }
+    preferredRole: String? = null,
+    onBackToRoleSelection: () -> Unit = {},
+    onLoginSuccess: (String?, String?, String?, String?) -> Unit = { _, _, _, _ -> }
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -64,6 +66,9 @@ fun AuthScreen(
     var passwordVisible by remember { mutableStateOf(false) }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
+    val normalizedPreferredRole = preferredRole?.uppercase()
+    val isRoleLocked = normalizedPreferredRole == "CUSTOMER" || normalizedPreferredRole == "LABOUR"
+    var selectedRole by remember(normalizedPreferredRole) { mutableStateOf(normalizedPreferredRole ?: "CUSTOMER") }
 
     Column(
         modifier = modifier
@@ -87,7 +92,11 @@ fun AuthScreen(
 
         // Title
         Text(
-            text = if (isLoginMode) "Welcome Back!" else "Create Account",
+            text = if (isLoginMode) {
+                if (isRoleLocked && normalizedPreferredRole == "LABOUR") "Welcome Labour Provider!" else "Welcome Back!"
+            } else {
+                if (isRoleLocked && normalizedPreferredRole == "LABOUR") "Create Labour Account" else "Create Account"
+            },
             style = MaterialTheme.typography.headlineLarge,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground
@@ -97,7 +106,11 @@ fun AuthScreen(
 
         // Subtitle
         Text(
-            text = if (isLoginMode) "Sign in to continue" else "Sign up to get started",
+            text = if (isRoleLocked) {
+                if (normalizedPreferredRole == "LABOUR") "Continue as Labour Provider" else "Continue as Customer"
+            } else {
+                if (isLoginMode) "Sign in to continue" else "Sign up to get started"
+            },
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
@@ -108,6 +121,53 @@ fun AuthScreen(
         // Name field (Sign Up only)
         AnimatedVisibility(visible = !isLoginMode) {
             Column {
+                if (!isRoleLocked) {
+                    Text(
+                        text = "Account Type",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Button(
+                            onClick = { selectedRole = "CUSTOMER" },
+                            enabled = !isLoading,
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (selectedRole == "CUSTOMER")
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.secondaryContainer
+                            )
+                        ) {
+                            Text("Customer")
+                        }
+                        Button(
+                            onClick = { selectedRole = "LABOUR" },
+                            enabled = !isLoading,
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (selectedRole == "LABOUR")
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.secondaryContainer
+                            )
+                        ) {
+                            Text("Labour")
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                } else {
+                    Text(
+                        text = "Account Type: ${if (normalizedPreferredRole == "LABOUR") "Labour" else "Customer"}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
@@ -215,6 +275,16 @@ fun AuthScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        if (isRoleLocked) {
+            TextButton(
+                onClick = onBackToRoleSelection,
+                enabled = !isLoading
+            ) {
+                Text("Change user type")
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
         // Login / Sign Up button
         Button(
             onClick = {
@@ -236,7 +306,7 @@ fun AuthScreen(
                                         "Welcome ${body.name}! Token: ${body.token}",
                                         Toast.LENGTH_LONG
                                     ).show()
-                                    onLoginSuccess(body.name, body.email)
+                                    onLoginSuccess(body.name, body.email, body.token, body.role)
                                 } else {
                                     val errorMsg = body?.message ?: "Login failed"
                                     Toast.makeText(context, errorMsg, Toast.LENGTH_SHORT).show()
@@ -263,7 +333,12 @@ fun AuthScreen(
                         coroutineScope.launch {
                             try {
                                 val response = RetrofitClient.authApi.register(
-                                    RegisterRequest(name = name, email = email, password = password)
+                                    RegisterRequest(
+                                        name = name,
+                                        email = email,
+                                        password = password,
+                                        role = selectedRole
+                                    )
                                 )
                                 val body = response.body()
                                 if (response.isSuccessful && body?.success == true) {
@@ -341,6 +416,7 @@ fun AuthScreen(
                     confirmPassword = ""
                     passwordVisible = false
                     confirmPasswordVisible = false
+                    selectedRole = normalizedPreferredRole ?: "CUSTOMER"
                 },
                 enabled = !isLoading
             ) {

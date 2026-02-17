@@ -1,29 +1,107 @@
 package com.example.myapplication
 
-import androidx.compose.foundation.layout.*
+import android.widget.Toast
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.ExitToApp
-import androidx.compose.material.icons.filled.QuestionAnswer
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.myapplication.api.MappedServiceItem
+import com.example.myapplication.api.RetrofitClient
 import com.example.myapplication.ui.theme.MyApplicationTheme
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     name: String? = null,
     userEmail: String? = null,
+    token: String? = null,
     modifier: Modifier = Modifier,
     onLogout: () -> Unit = {},
-    onNavigateToQuery: () -> Unit = {}
+    onNavigateToLabour: (Int?) -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
+    var searchText by remember { mutableStateOf("") }
+    var mappedServices by remember { mutableStateOf<List<MappedServiceItem>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(false) }
+
+    fun loadAvailableServices(search: String = searchText) {
+        if (token.isNullOrBlank()) {
+            Toast.makeText(context, "Session expired. Please login again.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        isLoading = true
+        coroutineScope.launch {
+            try {
+                val response = RetrofitClient.labourApi.getAvailableMappedServices(
+                    token = token,
+                    search = search.ifBlank { null }
+                )
+                val body = response.body()
+                if (response.isSuccessful && body?.success == true) {
+                    mappedServices = body.services
+                } else {
+                    mappedServices = emptyList()
+                    Toast.makeText(
+                        context,
+                        body?.message ?: "Failed to fetch available services",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Network error: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+
+    LaunchedEffect(token) {
+        if (!token.isNullOrBlank()) {
+            loadAvailableServices()
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -64,70 +142,86 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = "You are now logged in to MyApplication.",
+                        text = if (userEmail.isNullOrBlank()) {
+                            "Search labour services and raise a request."
+                        } else {
+                            "Logged in as $userEmail"
+                        },
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Quick actions
-            Text(
-                text = "Quick Actions",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-
-            // Submit Query Card
-            Card(
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                onClick = onNavigateToQuery,
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                ),
-                shape = RoundedCornerShape(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Default.QuestionAnswer,
-                            contentDescription = null,
-                            modifier = Modifier.size(32.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Column {
-                            Text(
-                                text = "Submit Query",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                text = "Submit a query or view your existing requests",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                    Icon(
-                        Icons.Default.ArrowForward,
-                        contentDescription = "Navigate",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                OutlinedTextField(
+                    value = searchText,
+                    onValueChange = { searchText = it },
+                    label = { Text("Search service or labour") },
+                    modifier = Modifier.weight(1f)
+                )
+                Button(onClick = { loadAvailableServices(searchText) }, enabled = !isLoading) {
+                    Text("Search")
                 }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            if (isLoading) {
+                Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else if (mappedServices.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("No labour services found")
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(mappedServices) { item ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Text(
+                                    text = item.serviceName ?: "Service",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                if (!item.description.isNullOrBlank()) {
+                                    Text(
+                                        text = item.description,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                                Text(
+                                    text = "Labour: ${item.labourName ?: item.labourEmail ?: "-"}",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                Text(
+                                    text = "Experience: ${item.experienceYears ?: 0} years",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                                    TextButton(onClick = { onNavigateToLabour(item.serviceId) }) {
+                                        Text("Request Service")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
             // Logout button
             Button(

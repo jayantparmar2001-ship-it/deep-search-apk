@@ -18,7 +18,8 @@ data class LoginRequest(
 data class RegisterRequest(
     val name: String,
     val email: String,
-    val password: String
+    val password: String,
+    val role: String? = null
 )
 
 /**
@@ -29,7 +30,8 @@ data class AuthResponse(
     val message: String? = null,
     val token: String? = null,
     val name: String? = null,
-    val email: String? = null
+    val email: String? = null,
+    val role: String? = null
 )
 
 /**
