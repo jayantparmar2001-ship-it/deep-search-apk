@@ -13,13 +13,38 @@ data class LoginRequest(
 )
 
 /**
+ * Data class for sending OTP request.
+ */
+data class SendOtpRequest(
+    val phoneNumber: String
+)
+
+/**
+ * Data class for verifying OTP request.
+ */
+data class VerifyOtpRequest(
+    val phoneNumber: String,
+    val otpCode: String
+)
+
+/**
+ * Data class for OTP response.
+ */
+data class OtpResponse(
+    val success: Boolean = false,
+    val message: String? = null,
+    val phoneNumber: String? = null
+)
+
+/**
  * Data class for the registration request body.
  */
 data class RegisterRequest(
     val name: String,
     val email: String,
     val password: String,
-    val role: String? = null
+    val role: String? = null,
+    val profileImageUrl: String? = null
 )
 
 /**
@@ -31,7 +56,8 @@ data class AuthResponse(
     val token: String? = null,
     val name: String? = null,
     val email: String? = null,
-    val role: String? = null
+    val role: String? = null,
+    val profileImageUrl: String? = null
 )
 
 /**
@@ -41,6 +67,8 @@ data class AuthResponse(
  * Endpoints:
  *   POST /api/auth/login    — login with email & password
  *   POST /api/auth/register — register with name, email & password
+ *   POST /api/auth/send-otp — send OTP to phone number
+ *   POST /api/auth/verify-otp — verify OTP and login
  */
 interface AuthApi {
 
@@ -49,4 +77,10 @@ interface AuthApi {
 
     @POST("api/auth/register")
     suspend fun register(@Body request: RegisterRequest): Response<AuthResponse>
+
+    @POST("api/auth/send-otp")
+    suspend fun sendOtp(@Body request: SendOtpRequest): Response<OtpResponse>
+
+    @POST("api/auth/verify-otp")
+    suspend fun verifyOtp(@Body request: VerifyOtpRequest): Response<AuthResponse>
 }

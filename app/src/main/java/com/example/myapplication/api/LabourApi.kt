@@ -12,7 +12,9 @@ data class ServiceItem(
     val description: String? = null,
     val price: Double? = null,
     val duration: String? = null,
-    val serviceTypes: List<ServiceTypeItem> = emptyList()
+    val serviceTypes: List<ServiceTypeItem> = emptyList(),
+    val mainImageUrl: String? = null,
+    val galleryPhotoUrls: List<String> = emptyList()
 )
 
 data class ServiceTypeItem(
@@ -29,7 +31,9 @@ data class CreateServiceRequest(
     val description: String? = null,
     val price: Double? = null,
     val duration: String? = null,
-    val serviceTypes: List<ServiceTypeItem> = emptyList()
+    val serviceTypes: List<ServiceTypeItem> = emptyList(),
+    val mainImageUrl: String? = null,
+    val galleryPhotoUrls: List<String> = emptyList()
 )
 
 data class LabourRequestSubmitRequest(

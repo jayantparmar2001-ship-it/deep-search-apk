@@ -19,10 +19,10 @@ import java.util.concurrent.TimeUnit
 object RetrofitClient {
 
     // Production URL - deployed deep-search API on Render
-    private const val BASE_URL = "https://deep-search-z3bh.onrender.com/"
+   // private const val BASE_URL = "https://deep-search-z3bh.onrender.com/"
     
     // Uncomment below for local development:
-    // private const val BASE_URL = "http://10.0.2.2:8080/"  // For Android Emulator
+     private const val BASE_URL = "http://10.0.2.2:8080/"  // For Android Emulator
     // private const val BASE_URL = "http://192.168.1.100:8080/"  // For Physical Device (replace with your IP)
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {

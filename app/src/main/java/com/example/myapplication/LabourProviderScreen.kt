@@ -1,15 +1,22 @@
 package com.example.myapplication
 
+import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -78,6 +85,8 @@ fun LabourProviderScreen(
     var newServiceDescription by remember { mutableStateOf("") }
     var newServicePrice by remember { mutableStateOf("") }
     var newServiceDuration by remember { mutableStateOf("") }
+    var newServiceMainImageUrl by remember { mutableStateOf("") }
+    var newServiceGalleryPhotos by remember { mutableStateOf("") }
     var newTypeName by remember { mutableStateOf("") }
     var newTypeDescription by remember { mutableStateOf("") }
     var newTypePrice by remember { mutableStateOf("") }
@@ -90,6 +99,17 @@ fun LabourProviderScreen(
     var isMapLoading by remember { mutableStateOf(false) }
     var isCreateServiceLoading by remember { mutableStateOf(false) }
     var isMappedLoading by remember { mutableStateOf(false) }
+
+    var selectedNewServiceMainImageUri by remember { mutableStateOf<Uri?>(null) }
+
+    val newServiceMainImagePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        uri?.let {
+            selectedNewServiceMainImageUri = it
+            newServiceMainImageUrl = it.toString()
+        }
+    }
 
     fun loadAllServices() {
         isServicesLoading = true
@@ -194,7 +214,9 @@ fun LabourProviderScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp),
+                        .padding(16.dp)
+                        .verticalScroll(rememberScrollState())
+                        .imePadding(),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
@@ -324,6 +346,27 @@ fun LabourProviderScreen(
                         label = { Text("Duration (optional)") },
                         modifier = Modifier.fillMaxWidth()
                     )
+                    OutlinedTextField(
+                        value = newServiceMainImageUrl,
+                        onValueChange = { newServiceMainImageUrl = it },
+                        label = { Text("Main Service Image URL (optional)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    TextButton(
+                        onClick = {
+                            newServiceMainImagePicker.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        }
+                    ) {
+                        Text("Pick Main Image from Gallery")
+                    }
+                    OutlinedTextField(
+                        value = newServiceGalleryPhotos,
+                        onValueChange = { newServiceGalleryPhotos = it },
+                        label = { Text("Gallery Image URLs (comma separated, optional)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
                     Text(
                         text = "Add Service Type",
                         style = MaterialTheme.typography.titleSmall,
@@ -391,6 +434,9 @@ fun LabourProviderScreen(
                             val parsedPrice = newServicePrice.toDoubleOrNull()
                             val hasValidDefaultPrice = parsedPrice != null && parsedPrice > 0.0
                             val hasTypes = serviceTypes.isNotEmpty()
+                            val galleryList = newServiceGalleryPhotos.split(",")
+                                .map { it.trim() }
+                                .filter { it.isNotBlank() }
                             if (newServiceName.isBlank() || (!hasValidDefaultPrice && !hasTypes)) {
                                 Toast.makeText(
                                     context,
@@ -408,7 +454,9 @@ fun LabourProviderScreen(
                                             description = newServiceDescription.trim().ifBlank { null },
                                             price = if (hasValidDefaultPrice) parsedPrice else null,
                                             duration = newServiceDuration.trim().ifBlank { null },
-                                            serviceTypes = serviceTypes.toList()
+                                            serviceTypes = serviceTypes.toList(),
+                                            mainImageUrl = newServiceMainImageUrl.trim().ifBlank { null },
+                                            galleryPhotoUrls = galleryList
                                         )
                                     )
                                     val body = response.body()

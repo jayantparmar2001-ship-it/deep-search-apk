@@ -1,6 +1,10 @@
 package com.example.myapplication
 
+import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -56,6 +61,8 @@ fun LabourHomeScreen(
     var serviceDescription by remember { mutableStateOf("") }
     var serviceDuration by remember { mutableStateOf("") }
     var servicePrice by remember { mutableStateOf("") }
+    var serviceMainImageUrl by remember { mutableStateOf("") }
+    var serviceGalleryPhotos by remember { mutableStateOf("") }
     var typeName by remember { mutableStateOf("") }
     var typeDescription by remember { mutableStateOf("") }
     var subscriptionPlan by remember { mutableStateOf("WEEKLY") }
@@ -63,6 +70,17 @@ fun LabourHomeScreen(
     var typePhotos by remember { mutableStateOf("") }
     val serviceTypes = remember { mutableStateListOf<ServiceTypeItem>() }
     var isCreating by remember { mutableStateOf(false) }
+
+    var selectedMainImageUri by remember { mutableStateOf<Uri?>(null) }
+
+    val mainImagePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        uri?.let {
+            selectedMainImageUri = it
+            serviceMainImageUrl = it.toString()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -85,7 +103,8 @@ fun LabourHomeScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(rememberScrollState())
+                .imePadding(),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Card(
@@ -143,6 +162,27 @@ fun LabourHomeScreen(
                         value = servicePrice,
                         onValueChange = { servicePrice = it },
                         label = { Text("Default Price (optional)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = serviceMainImageUrl,
+                        onValueChange = { serviceMainImageUrl = it },
+                        label = { Text("Main Service Image URL (optional)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    TextButton(
+                        onClick = {
+                            mainImagePicker.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        }
+                    ) {
+                        Text("Pick Main Image from Gallery")
+                    }
+                    OutlinedTextField(
+                        value = serviceGalleryPhotos,
+                        onValueChange = { serviceGalleryPhotos = it },
+                        label = { Text("Gallery Image URLs (comma separated, optional)") },
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -225,6 +265,9 @@ fun LabourHomeScreen(
                             }
                             val parsedPrice = servicePrice.toDoubleOrNull()
                             val hasDefaultPrice = parsedPrice != null && parsedPrice > 0.0
+                            val galleryList = serviceGalleryPhotos.split(",")
+                                .map { it.trim() }
+                                .filter { it.isNotBlank() }
                             if (serviceName.isBlank() || (!hasDefaultPrice && serviceTypes.isEmpty())) {
                                 Toast.makeText(
                                     context,
@@ -242,7 +285,9 @@ fun LabourHomeScreen(
                                             description = serviceDescription.trim().ifBlank { null },
                                             price = if (hasDefaultPrice) parsedPrice else null,
                                             duration = serviceDuration.trim().ifBlank { null },
-                                            serviceTypes = serviceTypes.toList()
+                                            serviceTypes = serviceTypes.toList(),
+                                            mainImageUrl = serviceMainImageUrl.trim().ifBlank { null },
+                                            galleryPhotoUrls = galleryList
                                         )
                                     )
                                     val body = response.body()
